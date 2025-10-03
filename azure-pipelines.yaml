@@ -1,0 +1,21 @@
+trigger:
+- staging
+
+pool:
+  name: Default  # Replace with the name of your self-hosted agent pool
+
+jobs:
+- job: CopyFilesJob
+  displayName: 'Copy Files and Create Artifact'
+  steps:
+  - checkout: self
+  - task: CopyFiles@2
+    displayName: 'Copy Files'
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)'
+      Contents: '**/*'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)/attendance'
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact: drop'
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
