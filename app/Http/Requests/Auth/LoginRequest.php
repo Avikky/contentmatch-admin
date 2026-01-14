@@ -2,14 +2,14 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Facades\LoginTrail;
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use App\Models\User;
-use App\Facades\LoginTrail;
 
 class LoginRequest extends FormRequest
 {
@@ -48,7 +48,8 @@ class LoginRequest extends FormRequest
         RateLimiter::clear($this->throttleKey());
     }
 
-    public function defaultLogin(){
+    public function defaultLogin()
+    {
         if (! $this->verifyCredentials($this->input('username'), $this->input('password'))) {
             RateLimiter::hit($this->throttleKey());
 
@@ -57,10 +58,10 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        if(Auth::check()){
-            if(Auth::user()->is_locked){
+        if (Auth::check()) {
+            if (Auth::user()->is_locked) {
                 Auth::logout();
-                 // Log failed login attempt
+                // Log failed login attempt
                 LoginTrail::logFailedLogin(
                     $this->input('username', 'unknown'),
                     'Authentication failed: Unable to log in user account is locked.'
@@ -68,7 +69,7 @@ class LoginRequest extends FormRequest
                 throw ValidationException::withMessages([
                     'username' => 'Your account is locked. Please reset your password.',
                 ]);
-            }           
+            }
         }
     }
 
@@ -78,13 +79,13 @@ class LoginRequest extends FormRequest
 
             $user = User::where('email', $username)->orWhere('user_name', $username)->orWhere('pin', $username)->first();
 
-            //check if password matches
+            // check if password matches
             if ($user && password_verify($password, $user->password)) {
                 Auth::login($user, $this->boolean('remember'));
+
                 return 1; // Successful authentication
             }
-            
-            
+
         } catch (\Throwable $th) {
             return 0;
         }
@@ -93,21 +94,23 @@ class LoginRequest extends FormRequest
     public function getUserDetails($username): ?User
     {
         try {
-            if($username == null) return null;
+            if ($username == null) {
+                return null;
+            }
 
             $query = User::query();
 
-            if($query->where('email', $username)->exists()) {
+            if ($query->where('email', $username)->exists()) {
                 $usernameType = 'email';
-            } else if($query->where('user_name', $username)->exists()) {
+            } elseif ($query->where('user_name', $username)->exists()) {
                 $usernameType = 'username';
-            } else if($query->where('pin', $username)->exists()) {
+            } elseif ($query->where('pin', $username)->exists()) {
                 $usernameType = 'pin';
             } else {
                 $usernameType = 'unknown';
             }
 
-            switch($usernameType){
+            switch ($usernameType) {
                 case 'email':
                     $users_details = User::where('email', $username)->first();
                     break;
@@ -123,6 +126,7 @@ class LoginRequest extends FormRequest
 
             if ($users_details) {
                 $users_details['username_type'] = $usernameType;
+
                 return $users_details;
             } else {
                 return null;
@@ -132,6 +136,7 @@ class LoginRequest extends FormRequest
             throw $th->getMessage();
         }
     }
+
     /**
      * Ensure the login request is not rate limited.
      *

@@ -13,7 +13,7 @@ class LoginTrailServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton('login-trail', function ($app) {
-            return new LoginTrailService();
+            return new LoginTrailService;
         });
 
         $this->app->singleton(LoginTrailService::class, function ($app) {

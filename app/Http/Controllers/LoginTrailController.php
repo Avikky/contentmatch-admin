@@ -25,8 +25,8 @@ class LoginTrailController extends Controller
     public function index(Request $request): Response
     {
         $filters = $request->only([
-            'user_id', 'action', 'success', 'ip_address', 
-            'date_from', 'date_to', 'days', 'search'
+            'user_id', 'action', 'success', 'ip_address',
+            'date_from', 'date_to', 'days', 'search',
         ]);
 
         $perPage = $request->integer('per_page', 15);
@@ -47,7 +47,7 @@ class LoginTrailController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'user_id' => 'sometimes|integer|exists:users,id',
-            'action' => 'sometimes|string|in:' . implode(',', LoginTrail::getActions()),
+            'action' => 'sometimes|string|in:'.implode(',', LoginTrail::getActions()),
             'success' => 'sometimes|boolean',
             'ip_address' => 'sometimes|ip',
             'date_from' => 'sometimes|date',
@@ -66,8 +66,8 @@ class LoginTrailController extends Controller
         }
 
         $filters = $request->only([
-            'user_id', 'action', 'success', 'ip_address', 
-            'date_from', 'date_to', 'days', 'search'
+            'user_id', 'action', 'success', 'ip_address',
+            'date_from', 'date_to', 'days', 'search',
         ]);
 
         $perPage = $request->integer('per_page', 15);
@@ -148,8 +148,8 @@ class LoginTrailController extends Controller
     {
         // This could be extended to support CSV, Excel exports
         $filters = $request->only([
-            'user_id', 'action', 'success', 'ip_address', 
-            'date_from', 'date_to', 'days', 'search'
+            'user_id', 'action', 'success', 'ip_address',
+            'date_from', 'date_to', 'days', 'search',
         ]);
 
         $trails = $this->loginTrailService->getTrails($filters, 1000); // Limit for export

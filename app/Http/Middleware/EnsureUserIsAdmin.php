@@ -8,18 +8,18 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsureUserIsAdmin
 {
-	public function handle(Request $request, Closure $next): Response
-	{
-		$user = $request->user();
+    public function handle(Request $request, Closure $next): Response
+    {
+        $admin = $request->user('admin');
 
-		if (!$user || !$user->is_admin) {
-			if ($request->expectsJson()) {
-				abort(403, 'This action is authorized for ContentMatch administrators only.');
-			}
+        if (! $admin) {
+            if ($request->expectsJson()) {
+                abort(403, 'This action is authorized for ContentMatch administrators only.');
+            }
 
-			return redirect()->route('login')->with('error', 'You need administrator privileges to access this area.');
-		}
+            return redirect()->route('admin.login')->with('error', 'You need administrator privileges to access this area.');
+        }
 
-		return $next($request);
-	}
+        return $next($request);
+    }
 }

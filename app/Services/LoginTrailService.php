@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
 
 class LoginTrailService
 {
@@ -24,7 +23,7 @@ class LoginTrailService
         ?Request $request = null
     ): LoginTrail {
         $request = $request ?? request();
-        
+
         return LoginTrail::create([
             'user_id' => $user?->id,
             'username' => $username ?? $user?->username ?? $user?->email,
@@ -62,8 +61,8 @@ class LoginTrailService
      * Log failed login attempt
      */
     public function logFailedLogin(
-        string $username, 
-        string $reason = 'Invalid credentials', 
+        string $username,
+        string $reason = 'Invalid credentials',
         array $additionalData = [],
         ?Request $request = null
     ): LoginTrail {
@@ -98,8 +97,8 @@ class LoginTrailService
      * Log password change
      */
     public function logPasswordChange(
-        User $user, 
-        bool $success = true, 
+        User $user,
+        bool $success = true,
         ?string $reason = null,
         array $additionalData = [],
         ?Request $request = null
@@ -119,8 +118,8 @@ class LoginTrailService
      * Log password reset
      */
     public function logPasswordReset(
-        User $user, 
-        bool $success = true, 
+        User $user,
+        bool $success = true,
         ?string $reason = null,
         array $additionalData = [],
         ?Request $request = null
@@ -140,7 +139,7 @@ class LoginTrailService
      * Log password reset request
      */
     public function logPasswordResetRequest(
-        ?User $user = null,
+        ?User $user,
         string $email,
         bool $success = true,
         array $additionalData = [],
@@ -166,11 +165,11 @@ class LoginTrailService
             ->orderBy('created_at', 'desc');
 
         // Apply filters
-        if (!empty($filters['user_id'])) {
+        if (! empty($filters['user_id'])) {
             $query->byUser($filters['user_id']);
         }
 
-        if (!empty($filters['action'])) {
+        if (! empty($filters['action'])) {
             $query->byAction($filters['action']);
         }
 
@@ -178,19 +177,19 @@ class LoginTrailService
             $query->bySuccess($filters['success']);
         }
 
-        if (!empty($filters['ip_address'])) {
+        if (! empty($filters['ip_address'])) {
             $query->byIpAddress($filters['ip_address']);
         }
 
-        if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
+        if (! empty($filters['date_from']) && ! empty($filters['date_to'])) {
             $query->dateRange($filters['date_from'], $filters['date_to']);
         }
 
-        if (!empty($filters['days'])) {
+        if (! empty($filters['days'])) {
             $query->recent($filters['days']);
         }
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $query->search($filters['search']);
         }
 
@@ -213,8 +212,8 @@ class LoginTrailService
      * Get failed login attempts for a user/IP in a time period
      */
     public function getFailedAttempts(
-        ?string $username = null, 
-        ?string $ipAddress = null, 
+        ?string $username = null,
+        ?string $ipAddress = null,
         int $minutes = 15
     ): Collection {
         $query = LoginTrail::byAction(LoginTrail::ACTION_FAILED_LOGIN)
@@ -243,20 +242,20 @@ class LoginTrailService
             'total_logins' => LoginTrail::byAction(LoginTrail::ACTION_LOGIN)
                 ->where('created_at', '>=', $from)
                 ->count(),
-            
+
             'failed_attempts' => LoginTrail::byAction(LoginTrail::ACTION_FAILED_LOGIN)
                 ->where('created_at', '>=', $from)
                 ->count(),
-                
+
             'unique_users' => LoginTrail::byAction(LoginTrail::ACTION_LOGIN)
                 ->where('created_at', '>=', $from)
                 ->distinct('user_id')
                 ->count(),
-                
+
             'password_changes' => LoginTrail::byAction(LoginTrail::ACTION_PASSWORD_CHANGE)
                 ->where('created_at', '>=', $from)
                 ->count(),
-                
+
             'password_resets' => LoginTrail::byAction(LoginTrail::ACTION_PASSWORD_RESET)
                 ->where('created_at', '>=', $from)
                 ->count(),
@@ -278,13 +277,13 @@ class LoginTrailService
     protected function getClientIpAddress(Request $request): ?string
     {
         $ipKeys = ['HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP', 'HTTP_CLIENT_IP', 'REMOTE_ADDR'];
-        
+
         foreach ($ipKeys as $key) {
             if ($request->server($key) && filter_var($request->server($key), FILTER_VALIDATE_IP)) {
                 return $request->server($key);
             }
         }
-        
+
         return $request->ip();
     }
 
@@ -294,14 +293,15 @@ class LoginTrailService
     protected function getDeviceType(string $userAgent): string
     {
         $userAgent = strtolower($userAgent);
-        
+
         if (preg_match('/mobile|android|iphone|ipad|phone/i', $userAgent)) {
             if (preg_match('/ipad|tablet/i', $userAgent)) {
                 return 'tablet';
             }
+
             return 'mobile';
         }
-        
+
         return 'desktop';
     }
 

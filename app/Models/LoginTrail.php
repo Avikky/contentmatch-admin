@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Builder;
 
 class LoginTrail extends Model
 {
@@ -53,14 +53,23 @@ class LoginTrail extends Model
      * Action constants for consistency
      */
     public const ACTION_LOGIN = 'login';
+
     public const ACTION_LOGOUT = 'logout';
+
     public const ACTION_FAILED_LOGIN = 'failed_login';
+
     public const ACTION_PASSWORD_CHANGE = 'password_change';
+
     public const ACTION_PASSWORD_RESET = 'password_reset';
+
     public const ACTION_PASSWORD_RESET_REQUEST = 'password_reset_request';
+
     public const ACTION_ACCOUNT_LOCKED = 'account_locked';
+
     public const ACTION_ACCOUNT_UNLOCKED = 'account_unlocked';
+
     public const ACTION_SESSION_EXPIRED = 'session_expired';
+
     public const ACTION_FORCED_LOGOUT = 'forced_logout';
 
     /**
@@ -145,13 +154,13 @@ class LoginTrail extends Model
     {
         return $query->where(function ($q) use ($search) {
             $q->where('username', 'like', "%{$search}%")
-              ->orWhere('ip_address', 'like', "%{$search}%")
-              ->orWhere('action', 'like', "%{$search}%")
-              ->orWhere('reason', 'like', "%{$search}%")
-              ->orWhereHas('user', function ($userQuery) use ($search) {
-                  $userQuery->where('name', 'like', "%{$search}%")
-                           ->orWhere('email', 'like', "%{$search}%");
-              });
+                ->orWhere('ip_address', 'like', "%{$search}%")
+                ->orWhere('action', 'like', "%{$search}%")
+                ->orWhere('reason', 'like', "%{$search}%")
+                ->orWhereHas('user', function ($userQuery) use ($search) {
+                    $userQuery->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
         });
     }
 }

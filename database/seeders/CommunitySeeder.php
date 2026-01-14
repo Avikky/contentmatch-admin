@@ -16,7 +16,7 @@ class CommunitySeeder extends Seeder
         $owner = User::admins()->first();
         $member = User::nonAdmins()->first();
 
-        if (!$owner) {
+        if (! $owner) {
             return;
         }
 

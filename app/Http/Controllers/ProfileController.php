@@ -2,15 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Facades\Hash;
 
 class ProfileController extends Controller
 {
@@ -31,15 +28,14 @@ class ProfileController extends Controller
 
         $validatedData = $request->validate([
             'full_name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'phone' => 'nullable|string|max:20'
+            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
+            'phone' => 'nullable|string|max:20',
         ]);
 
         $user->update($validatedData);
 
         return Redirect::route('profile')->with('status', 'Profile updated successfully.');
     }
-
 
     public function updateCompanyInfo(Request $request)
     {
@@ -56,7 +52,6 @@ class ProfileController extends Controller
         return Redirect::route('profile')->with('status', 'Company information updated successfully.');
     }
 
-
     public function changePassword(Request $request)
     {
         $user = $request->user();
@@ -66,7 +61,7 @@ class ProfileController extends Controller
             'new_password' => 'required|string|min:8|confirmed',
         ]);
 
-        if (!Hash::check($validatedData['current_password'], $user->password)) {
+        if (! Hash::check($validatedData['current_password'], $user->password)) {
             return Redirect::back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
 
@@ -75,6 +70,4 @@ class ProfileController extends Controller
 
         return Redirect::route('profile')->with('status', 'Password changed successfully.');
     }
-
-    
 }

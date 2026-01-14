@@ -4,108 +4,278 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Community;
-use App\Models\EngagementMetric;
-use App\Models\Hashtag;
+use App\Models\Content;
+use App\Models\Report;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ReportController extends Controller
 {
-	public function index(Request $request): Response
-	{
-		$range = (int) $request->input('range', 30);
-		$range = in_array($range, [7, 14, 30, 90]) ? $range : 30;
+    /**
+     * Display all reports with filtering
+     */
+    public function index(Request $request): Response
+    {
+        $filters = $request->only(['status', 'type', 'reason', 'search', 'date_from', 'date_to']);
+        $perPage = $request->integer('per_page', 15);
 
-		$startDate = Carbon::now()->subDays($range - 1)->startOfDay();
+        $query = Report::query()
+            ->with(['reporter:id,username,full_name,email', 'resolver:id,full_name,email', 'reportable'])
+            ->orderByDesc('created_at');
 
-		$userGrowth = User::selectRaw('DATE(created_at) as date, COUNT(*) as total')
-			->where('created_at', '>=', $startDate)
-			->groupBy('date')
-			->orderBy('date')
-			->get()
-			->map(fn ($row) => [
-				'date' => Carbon::parse($row->date)->toDateString(),
-				'total' => (int) $row->total,
-			]);
+        // Filter by status
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
 
-		$communityBreakdown = Community::withCount('members')
-			->with(['owner:id,name,full_name'])
-			->get()
-			->map(function (Community $community) use ($startDate) {
-				$engagement = $community->engagementMetrics()
-					->where('recorded_for', '>=', $startDate)
-					->selectRaw('SUM(posts) as posts, SUM(comments) as comments, SUM(likes) as likes, SUM(shares) as shares')
-					->first();
+        // Filter by reportable type
+        if (! empty($filters['type'])) {
+            $typemap = [
+                'user' => User::class,
+                'content' => Content::class,
+                'community' => Community::class,
+            ];
+            if (isset($typemap[$filters['type']])) {
+                $query->where('reportable_type', $typemap[$filters['type']]);
+            }
+        }
 
-				return [
-					'id' => $community->id,
-					'name' => $community->name,
-					'members' => $community->members_count,
-					'owner' => $community->owner?->display_name ?? 'Unassigned',
-					'posts' => (int) ($engagement->posts ?? 0),
-					'comments' => (int) ($engagement->comments ?? 0),
-					'likes' => (int) ($engagement->likes ?? 0),
-					'shares' => (int) ($engagement->shares ?? 0),
-				];
-			});
+        // Filter by reason
+        if (! empty($filters['reason'])) {
+            $query->where('reason', $filters['reason']);
+        }
 
-		$engagementByCommunity = EngagementMetric::select('community_id')
-			->selectRaw('SUM(posts) as posts, SUM(comments) as comments, SUM(likes) as likes, SUM(shares) as shares, SUM(impressions) as impressions')
-			->where('recorded_for', '>=', $startDate)
-			->groupBy('community_id')
-			->with('community:id,name')
-			->orderByDesc(DB::raw('SUM(impressions)'))
-			->get()
-			->map(fn (EngagementMetric $metric) => [
-				'community' => $metric->community?->name ?? 'All Communities',
-				'posts' => (int) $metric->posts,
-				'comments' => (int) $metric->comments,
-				'likes' => (int) $metric->likes,
-				'shares' => (int) $metric->shares,
-				'impressions' => (int) $metric->impressions,
-			]);
+        // Search in description
+        if (! empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                    ->orWhere('reason', 'like', "%{$search}%")
+                    ->orWhereHas('reporter', function ($rq) use ($search) {
+                        $rq->where('username', 'like', "%{$search}%")
+                            ->orWhere('full_name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
+            });
+        }
 
-		$hashtagUsage = Hashtag::orderByDesc('usage_count')
-			->take(15)
-			->get(['id', 'tag', 'usage_count']);
+        // Date range filter
+        if (! empty($filters['date_from'])) {
+            $query->where('created_at', '>=', $filters['date_from']);
+        }
+        if (! empty($filters['date_to'])) {
+            $query->where('created_at', '<=', $filters['date_to']);
+        }
 
-		$summary = [
-			'total_users' => User::count(),
-			'total_admins' => User::admins()->count(),
-			'total_communities' => Community::count(),
-			'active_communities' => Community::where('status', 'active')->count(),
-			'engagement_window_days' => $range,
-			'engagement_totals' => EngagementMetric::where('recorded_for', '>=', $startDate)
-				->selectRaw('SUM(posts) as posts, SUM(comments) as comments, SUM(likes) as likes, SUM(shares) as shares, SUM(impressions) as impressions')
-				->first(),
-		];
+        $reports = $query->paginate($perPage);
 
-		return Inertia::render('Admin/Reports/Index', [
-			'summary' => [
-				'total_users' => $summary['total_users'],
-				'total_admins' => $summary['total_admins'],
-				'total_communities' => $summary['total_communities'],
-				'active_communities' => $summary['active_communities'],
-				'engagement_window_days' => $summary['engagement_window_days'],
-				'engagement_totals' => [
-					'posts' => (int) ($summary['engagement_totals']->posts ?? 0),
-					'comments' => (int) ($summary['engagement_totals']->comments ?? 0),
-					'likes' => (int) ($summary['engagement_totals']->likes ?? 0),
-					'shares' => (int) ($summary['engagement_totals']->shares ?? 0),
-					'impressions' => (int) ($summary['engagement_totals']->impressions ?? 0),
-				],
-			],
-			'userGrowth' => $userGrowth,
-			'communityBreakdown' => $communityBreakdown,
-			'engagementByCommunity' => $engagementByCommunity,
-			'hashtagUsage' => $hashtagUsage,
-			'filters' => [
-				'range' => $range,
-			],
-		]);
-	}
+        // Get statistics
+        $statistics = $this->getReportStatistics();
+
+        return Inertia::render('Admin/Reports/Index', [
+            'reports' => $reports,
+            'statistics' => $statistics,
+            'filters' => $filters,
+        ]);
+    }
+
+    /**
+     * Display a specific report with full details
+     */
+    public function show(Report $report): Response
+    {
+        $report->load([
+            'reporter:id,username,full_name,email,profile_image_url',
+            'resolver:id,full_name,email',
+            'reportable',
+        ]);
+
+        // Load additional context based on reportable type
+        $context = $this->getReportableContext($report);
+
+        return Inertia::render('Admin/Reports/Show', [
+            'report' => $report,
+            'context' => $context,
+        ]);
+    }
+
+    /**
+     * Mark report as reviewing
+     */
+    public function review(Report $report, Request $request)
+    {
+        $admin = Auth::guard('admin')->user();
+
+        DB::transaction(function () use ($report, $admin) {
+            $report->markAsReviewing($admin);
+        });
+
+        return redirect()->back()->with('success', 'Report marked as under review.');
+    }
+
+    /**
+     * Resolve a report
+     */
+    public function resolve(Report $report, Request $request)
+    {
+        $validated = $request->validate([
+            'resolution_notes' => ['nullable', 'string', 'max:1000'],
+            'action_on_reportable' => ['nullable', 'in:none,ban,suspend,delete,flag'],
+        ]);
+
+        $admin = Auth::guard('admin')->user();
+
+        DB::transaction(function () use ($report, $admin, $validated) {
+            // Take action on the reported item if specified
+            if (! empty($validated['action_on_reportable']) && $validated['action_on_reportable'] !== 'none') {
+                $this->takeActionOnReportable($report, $validated['action_on_reportable'], $admin);
+            }
+
+            // Resolve the report
+            $report->resolve($admin, $validated['resolution_notes']);
+        });
+
+        return redirect()->back()->with('success', 'Report resolved successfully.');
+    }
+
+    /**
+     * Dismiss a report
+     */
+    public function dismiss(Report $report, Request $request)
+    {
+        $validated = $request->validate([
+            'resolution_notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $admin = Auth::guard('admin')->user();
+
+        DB::transaction(function () use ($report, $admin, $validated) {
+            $report->dismiss($admin, $validated['resolution_notes']);
+        });
+
+        return redirect()->back()->with('success', 'Report dismissed.');
+    }
+
+    /**
+     * Bulk update report statuses
+     */
+    public function bulkUpdate(Request $request)
+    {
+        $validated = $request->validate([
+            'report_ids' => ['required', 'array'],
+            'report_ids.*' => ['exists:reports,id'],
+            'action' => ['required', 'in:resolve,dismiss,review'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $admin = Auth::guard('admin')->user();
+
+        DB::transaction(function () use ($validated, $admin) {
+            $reports = Report::whereIn('id', $validated['report_ids'])->get();
+
+            foreach ($reports as $report) {
+                match ($validated['action']) {
+                    'resolve' => $report->resolve($admin, $validated['notes'] ?? null),
+                    'dismiss' => $report->dismiss($admin, $validated['notes'] ?? null),
+                    'review' => $report->markAsReviewing($admin),
+                };
+            }
+        });
+
+        return redirect()->back()->with('success', count($validated['report_ids']).' reports updated successfully.');
+    }
+
+    /**
+     * Get report statistics
+     */
+    private function getReportStatistics(): array
+    {
+        return [
+            'total' => Report::count(),
+            'pending' => Report::pending()->count(),
+            'reviewing' => Report::reviewing()->count(),
+            'resolved' => Report::resolved()->count(),
+            'dismissed' => Report::dismissed()->count(),
+            'today' => Report::whereDate('created_at', today())->count(),
+            'this_week' => Report::where('created_at', '>=', now()->startOfWeek())->count(),
+            'this_month' => Report::where('created_at', '>=', now()->startOfMonth())->count(),
+        ];
+    }
+
+    /**
+     * Get additional context for reportable item
+     */
+    private function getReportableContext(Report $report): array
+    {
+        $reportable = $report->reportable;
+
+        if (! $reportable) {
+            return [];
+        }
+
+        $context = [];
+
+        if ($reportable instanceof User) {
+            $context['type'] = 'user';
+            $context['user_status'] = $reportable->status;
+            $context['is_verified'] = $reportable->is_verified;
+            $context['joined_date'] = $reportable->created_at;
+            $context['total_reports'] = $reportable->receivedReports()->count();
+            $context['communities_count'] = $reportable->communities()->count();
+            $context['content_count'] = $reportable->contents()->count();
+        } elseif ($reportable instanceof Content) {
+            $context['type'] = 'content';
+            $context['content_status'] = $reportable->status;
+            $context['author'] = $reportable->user;
+            $context['community'] = $reportable->community;
+            $context['created_at'] = $reportable->created_at;
+            $context['total_reports'] = $reportable->reports()->count();
+        } elseif ($reportable instanceof Community) {
+            $context['type'] = 'community';
+            $context['community_status'] = $reportable->status;
+            $context['owner'] = $reportable->owner;
+            $context['members_count'] = $reportable->members()->count();
+            $context['created_at'] = $reportable->created_at;
+            $context['total_reports'] = $reportable->reports()->count();
+        }
+
+        return $context;
+    }
+
+    /**
+     * Take action on the reportable item
+     */
+    private function takeActionOnReportable(Report $report, string $action, $admin): void
+    {
+        $reportable = $report->reportable;
+
+        if (! $reportable) {
+            return;
+        }
+
+        if ($reportable instanceof User) {
+            match ($action) {
+                'ban' => $reportable->update(['status' => User::STATUS_BANNED]),
+                'suspend' => $reportable->update(['status' => User::STATUS_SUSPENDED]),
+                'delete' => $reportable->delete(),
+                default => null
+            };
+        } elseif ($reportable instanceof Content) {
+            match ($action) {
+                'flag' => $reportable->update(['status' => Content::STATUS_FLAGGED]),
+                'delete' => $reportable->delete(),
+                default => null
+            };
+        } elseif ($reportable instanceof Community) {
+            match ($action) {
+                'suspend' => $reportable->update(['status' => Community::STATUS_SUSPENDED]),
+                'delete' => $reportable->delete(),
+                default => null
+            };
+        }
+    }
 }

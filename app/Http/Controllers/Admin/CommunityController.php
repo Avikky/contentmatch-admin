@@ -15,150 +15,306 @@ use Inertia\Response;
 
 class CommunityController extends Controller
 {
-	public function index(Request $request): Response
-	{
-		$search = $request->string('search')->toString();
+    public function index(Request $request): Response
+    {
+        $search = $request->string('search')->toString();
 
-		$communities = Community::query()
-			->with(['owner:id,name,full_name', 'members:id'])
-			->withCount('members')
-			->when($search, function ($query) use ($search) {
-				$query->where(function ($q) use ($search) {
-					$q->where('name', 'like', "%{$search}%")
-						->orWhere('category', 'like', "%{$search}%")
-						->orWhere('description', 'like', "%{$search}%");
-				});
-			})
-			->orderByDesc('created_at')
-			->paginate(10)
-			->withQueryString();
+        $communities = Community::query()
+            ->with(['owner:id,full_name,username', 'members:id', 'category:id,name'])
+            ->withCount('members')
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhereHas('category', function ($categoryQuery) use ($search) {
+                            $categoryQuery->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->orderByDesc('created_at')
+            ->paginate(10)
+            ->withQueryString();
 
-		$owners = User::admins()
-			->orderBy('name')
-			->get(['id', 'name', 'full_name', 'title']);
+        $owners = User::where('status', 'active')
+            ->orderBy('full_name')
+            ->get(['id', 'full_name', 'username', 'email']);
 
-		$availableMembers = User::orderBy('name')
-			->take(50)
-			->get(['id', 'name', 'full_name', 'email']);
+        $availableMembers = User::where('status', 'active')
+            ->orderBy('full_name')
+            ->take(50)
+            ->get(['id', 'full_name', 'username', 'email']);
 
-		return Inertia::render('Admin/Communities/Index', [
-			'communities' => $communities,
-			'filters' => [
-				'search' => $search,
-			],
-			'owners' => $owners->map(fn (User $user) => [
-				'id' => $user->id,
-				'name' => $user->display_name,
-				'title' => $user->title,
-			]),
-			'members' => $availableMembers->map(fn (User $user) => [
-				'id' => $user->id,
-				'name' => $user->display_name,
-				'email' => $user->email,
-			]),
-		]);
-	}
+        return Inertia::render('Admin/Communities/Index', [
+            'communities' => $communities,
+            'filters' => [
+                'search' => $search,
+            ],
+            'owners' => $owners->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->full_name ?? $user->username,
+                'username' => $user->username,
+                'email' => $user->email,
+            ]),
+            'members' => $availableMembers->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->full_name ?? $user->username,
+                'username' => $user->username,
+                'email' => $user->email,
+            ]),
+        ]);
+    }
 
-	public function store(Request $request): RedirectResponse
-	{
-		$validated = $this->validatePayload($request);
+    public function store(Request $request): RedirectResponse
+    {
+        $validated = $this->validatePayload($request);
 
-		$community = Community::create([
-			'name' => $validated['name'],
-			'slug' => $validated['slug'] ?? Str::slug($validated['name'] . '-' . Str::random(4)),
-			'avatar_path' => $validated['avatar_path'] ?? null,
-			'category' => $validated['category'] ?? null,
-			'description' => $validated['description'] ?? null,
-			'visibility' => $validated['visibility'],
-			'status' => $validated['status'],
-			'owner_id' => $validated['owner_id'] ?? null,
-		]);
+        $community = Community::create([
+            'name' => $validated['name'],
+            'slug' => $validated['slug'] ?? Str::slug($validated['name'].'-'.Str::random(4)),
+            'description' => $validated['description'] ?? null,
+            'type' => $validated['type'] ?? 'public',
+            'status' => $validated['status'],
+            'owner_id' => $validated['owner_id'] ?? null,
+            'category_id' => $validated['category_id'] ?? null,
+            'banner_url' => $validated['banner_url'] ?? null,
+        ]);
 
-		if (!empty($validated['member_ids'])) {
-			$community->members()->sync($validated['member_ids']);
-		}
+        if (! empty($validated['member_ids'])) {
+            $community->members()->sync($validated['member_ids']);
+        }
 
-		if (!empty($validated['hashtags'])) {
-			$this->syncHashtags($community, $validated['hashtags']);
-		}
+        if (! empty($validated['hashtags'])) {
+            $this->syncHashtags($community, $validated['hashtags']);
+        }
 
-		return Redirect::back()->with('success', 'Community created successfully.');
-	}
+        return Redirect::back()->with('success', 'Community created successfully.');
+    }
 
-	public function update(Request $request, Community $community): RedirectResponse
-	{
-		$validated = $this->validatePayload($request, $community);
+    public function update(Request $request, Community $community): RedirectResponse
+    {
+        $validated = $this->validatePayload($request, $community);
 
-		$community->fill([
-			'name' => $validated['name'],
-			'category' => $validated['category'] ?? null,
-			'description' => $validated['description'] ?? null,
-			'visibility' => $validated['visibility'],
-			'status' => $validated['status'],
-			'owner_id' => $validated['owner_id'] ?? null,
-		]);
+        $community->fill([
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'type' => $validated['type'] ?? $community->type,
+            'status' => $validated['status'],
+            'owner_id' => $validated['owner_id'] ?? null,
+            'category_id' => $validated['category_id'] ?? null,
+        ]);
 
-		if (!empty($validated['slug'])) {
-			$community->slug = $validated['slug'];
-		}
+        if (! empty($validated['slug'])) {
+            $community->slug = $validated['slug'];
+        }
 
-		if (!empty($validated['avatar_path'])) {
-			$community->avatar_path = $validated['avatar_path'];
-		}
+        if (! empty($validated['banner_url'])) {
+            $community->banner_url = $validated['banner_url'];
+        }
 
-		$community->save();
+        $community->save();
 
-		if (array_key_exists('member_ids', $validated)) {
-			$community->members()->sync($validated['member_ids'] ?? []);
-		}
+        if (array_key_exists('member_ids', $validated)) {
+            $community->members()->sync($validated['member_ids'] ?? []);
+        }
 
-		if (array_key_exists('hashtags', $validated)) {
-			$this->syncHashtags($community, $validated['hashtags'] ?? []);
-		}
+        if (array_key_exists('hashtags', $validated)) {
+            $this->syncHashtags($community, $validated['hashtags'] ?? []);
+        }
 
-		return Redirect::back()->with('success', 'Community updated successfully.');
-	}
+        return Redirect::back()->with('success', 'Community updated successfully.');
+    }
 
-	public function destroy(Community $community): RedirectResponse
-	{
-		$community->members()->detach();
-		$community->hashtags()->detach();
-		$community->engagementMetrics()->delete();
-		$community->delete();
+    public function show(Community $community): Response
+    {
+        $community->load([
+            'owner:id,full_name,username,email,profile_image_url',
+            'members' => function ($query) {
+                $query->select('users.id', 'users.full_name', 'users.username', 'users.email', 'users.profile_image_url', 'users.status')
+                    ->withPivot('role', 'status', 'notification_enabled', 'last_activity_at', 'created_at');
+            },
+            'admins:id,full_name,username,email,profile_image_url',
+            'moderators:id,full_name,username,email,profile_image_url',
+            'communityDiscord',
+            'category:id,name',
+        ]);
 
-		return Redirect::back()->with('success', 'Community removed successfully.');
-	}
+        return Inertia::render('Admin/Communities/Show', [
+            'community' => [
+                'id' => $community->id,
+                'name' => $community->name,
+                'slug' => $community->slug,
+                'banner_url' => $community->banner_url,
+                'category' => $community->category ? [
+                    'id' => $community->category->id,
+                    'name' => $community->category->name,
+                ] : null,
+                'description' => $community->description,
+                'type' => $community->type,
+                'status' => $community->status,
+                'created_at' => $community->created_at,
+                'updated_at' => $community->updated_at,
+                'owner' => $community->owner ? [
+                    'id' => $community->owner->id,
+                    'name' => $community->owner->full_name ?? $community->owner->username,
+                    'username' => $community->owner->username,
+                    'email' => $community->owner->email,
+                    'profile_image_url' => $community->owner->profile_image_url,
+                ] : null,
+                'members_count' => $community->members->count(),
+                'members' => $community->members->map(function ($member) {
+                    return [
+                        'id' => $member->id,
+                        'name' => $member->full_name ?? $member->username,
+                        'username' => $member->username,
+                        'email' => $member->email,
+                        'profile_image_url' => $member->profile_image_url,
+                        'status' => $member->status,
+                        'role' => $member->pivot->role,
+                        'member_status' => $member->pivot->status,
+                        'joined_at' => $member->pivot->created_at,
+                        'last_activity_at' => $member->pivot->last_activity_at,
+                    ];
+                }),
+                'admins' => $community->admins->map(function ($admin) {
+                    return [
+                        'id' => $admin->id,
+                        'name' => $admin->full_name ?? $admin->username,
+                        'username' => $admin->username,
+                        'email' => $admin->email,
+                        'profile_image_url' => $admin->profile_image_url,
+                    ];
+                }),
+                'moderators' => $community->moderators->map(function ($moderator) {
+                    return [
+                        'id' => $moderator->id,
+                        'name' => $moderator->full_name ?? $moderator->username,
+                        'username' => $moderator->username,
+                        'email' => $moderator->email,
+                        'profile_image_url' => $moderator->profile_image_url,
+                    ];
+                }),
+                'discord_server' => $community->communityDiscord ? [
+                    'id' => $community->communityDiscord->id,
+                    'server_id' => $community->communityDiscord->server_id,
+                    'server_name' => $community->communityDiscord->server_name,
+                    'invite_code' => $community->communityDiscord->invite_code,
+                    'is_active' => $community->communityDiscord->is_active,
+                    'created_at' => $community->communityDiscord->created_at,
+                ] : null,
+            ],
+        ]);
+    }
 
-	protected function validatePayload(Request $request, ?Community $community = null): array
-	{
-		return $request->validate([
-			'name' => ['required', 'string', 'max:255'],
-			'slug' => ['nullable', 'string', 'max:255', 'unique:communities,slug,' . optional($community)->id],
-			'avatar_path' => ['nullable', 'string', 'max:255'],
-			'category' => ['nullable', 'string', 'max:120'],
-			'description' => ['nullable', 'string'],
-			'visibility' => ['required', 'in:public,private'],
-			'status' => ['required', 'in:active,archived'],
-			'owner_id' => ['nullable', 'exists:users,id'],
-			'member_ids' => ['nullable', 'array'],
-			'member_ids.*' => ['exists:users,id'],
-			'hashtags' => ['nullable', 'array'],
-			'hashtags.*' => ['string', 'max:100'],
-		]);
-	}
+    public function destroy(Community $community): RedirectResponse
+    {
+        $community->members()->detach();
+        $community->hashtags()->detach();
+        $community->engagementScores()->delete();
+        $community->delete();
 
-	protected function syncHashtags(Community $community, array $hashtags): void
-	{
-		$hashtagIds = collect($hashtags)
-			->filter()
-			->map(fn ($tag) => ltrim((string) $tag, '#'))
-			->map(fn ($tag) => Str::lower(trim($tag)))
-			->unique()
-			->map(function ($tag) {
-				return Hashtag::firstOrCreate(['tag' => $tag])->id;
-			})
-			->all();
+        return Redirect::back()->with('success', 'Community removed successfully.');
+    }
 
-		$community->hashtags()->sync($hashtagIds);
-	}
+    public function banMember(Community $community, User $user): RedirectResponse
+    {
+        $member = $community->members()->where('user_id', $user->id)->first();
+
+        if (! $member) {
+            return Redirect::back()->with('error', 'User is not a member of this community.');
+        }
+
+        $community->members()->updateExistingPivot($user->id, [
+            'status' => 'banned',
+        ]);
+
+        return Redirect::back()->with('success', 'Member has been banned from the community.');
+    }
+
+    public function removeMember(Community $community, User $user): RedirectResponse
+    {
+        $member = $community->members()->where('user_id', $user->id)->first();
+
+        if (! $member) {
+            return Redirect::back()->with('error', 'User is not a member of this community.');
+        }
+
+        $community->members()->detach($user->id);
+
+        return Redirect::back()->with('success', 'Member has been removed from the community.');
+    }
+
+    public function updateMemberRole(Community $community, User $user, Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'role' => ['required', 'in:admin,moderator,member'],
+        ]);
+
+        $member = $community->members()->where('user_id', $user->id)->first();
+
+        if (! $member) {
+            return Redirect::back()->with('error', 'User is not a member of this community.');
+        }
+
+        $community->members()->updateExistingPivot($user->id, [
+            'role' => $validated['role'],
+        ]);
+
+        return Redirect::back()->with('success', 'Member role updated successfully.');
+    }
+
+    public function toggleMemberStatus(Community $community, User $user, Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'in:active,banned'],
+        ]);
+
+        $member = $community->members()->where('user_id', $user->id)->first();
+
+        if (! $member) {
+            return Redirect::back()->with('error', 'User is not a member of this community.');
+        }
+
+        $community->members()->updateExistingPivot($user->id, [
+            'status' => $validated['status'],
+        ]);
+
+        $message = $validated['status'] === 'banned'
+            ? 'Member has been banned from the community.'
+            : 'Member has been reinstated in the community.';
+
+        return Redirect::back()->with('success', $message);
+    }
+
+    protected function validatePayload(Request $request, ?Community $community = null): array
+    {
+        return $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255', 'unique:communities,slug,'.optional($community)->id],
+            'banner_url' => ['nullable', 'string', 'max:255'],
+            'category_id' => ['nullable', 'exists:categories,id'],
+            'description' => ['nullable', 'string'],
+            'type' => ['required', 'in:public,private'],
+            'status' => ['required', 'in:active,archived,suspended'],
+            'owner_id' => ['nullable', 'exists:users,id'],
+            'member_ids' => ['nullable', 'array'],
+            'member_ids.*' => ['exists:users,id'],
+            'hashtags' => ['nullable', 'array'],
+            'hashtags.*' => ['string', 'max:100'],
+        ]);
+    }
+
+    protected function syncHashtags(Community $community, array $hashtags): void
+    {
+        $hashtagIds = collect($hashtags)
+            ->filter()
+            ->map(fn ($tag) => ltrim((string) $tag, '#'))
+            ->map(fn ($tag) => Str::lower(trim($tag)))
+            ->unique()
+            ->map(function ($tag) {
+                return Hashtag::firstOrCreate(['name' => $tag])->id;
+            })
+            ->all();
+
+        $community->hashtags()->sync($hashtagIds);
+    }
 }

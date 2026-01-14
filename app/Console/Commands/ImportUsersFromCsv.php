@@ -2,13 +2,12 @@
 
 namespace App\Console\Commands;
 
+use Carbon\Carbon;
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Carbon\Carbon;
-use Exception;
 
 class ImportUsersFromCsv extends Command
 {
@@ -59,7 +58,7 @@ class ImportUsersFromCsv extends Command
         'NewPassword1' => 'new_password_1',
         'NewPassword2' => 'new_password_2',
         'UndecriptedPassword' => 'unencrypted_password',
-        'Created Date' => 'created_at'
+        'Created Date' => 'created_at',
     ];
 
     /**
@@ -68,21 +67,22 @@ class ImportUsersFromCsv extends Command
     public function handle()
     {
         $this->info('Starting CSV import process...');
-        
+
         $filePath = base_path($this->option('file'));
         $batchSize = (int) $this->option('batch-size');
         $resume = $this->option('resume');
 
         // Validate file exists
-        if (!File::exists($filePath)) {
+        if (! File::exists($filePath)) {
             $this->error("CSV file not found: {$filePath}");
+
             return 1;
         }
 
         // Load progress if resuming
         $progress = $this->loadProgress();
         $startLine = $resume && $progress ? $progress['last_processed_line'] + 1 : 1;
-        
+
         if ($resume && $progress) {
             $this->info("Resuming import from line {$startLine}");
             $this->info("Last successful import: {$progress['last_success_datetime']}");
@@ -91,23 +91,24 @@ class ImportUsersFromCsv extends Command
 
         try {
             $totalLines = $this->countCsvLines($filePath);
-            $this->info("Total lines in CSV: " . ($totalLines - 1) . " (excluding header)");
+            $this->info('Total lines in CSV: '.($totalLines - 1).' (excluding header)');
 
             $handle = fopen($filePath, 'r');
-            if (!$handle) {
-                throw new Exception("Cannot open CSV file");
+            if (! $handle) {
+                throw new Exception('Cannot open CSV file');
             }
 
             // Read and validate header
             $header = fgetcsv($handle);
-            if (!$this->validateHeader($header)) {
+            if (! $this->validateHeader($header)) {
                 fclose($handle);
+
                 return 1;
             }
 
             // Skip to start line if resuming
             $currentLine = 1;
-            while ($currentLine < $startLine && !feof($handle)) {
+            while ($currentLine < $startLine && ! feof($handle)) {
                 fgetcsv($handle);
                 $currentLine++;
             }
@@ -115,9 +116,9 @@ class ImportUsersFromCsv extends Command
             $processedCount = $progress['total_processed'] ?? 0;
             $batchData = [];
             $batchCount = 0;
-            
+
             $this->info("Processing records in batches of {$batchSize}...");
-            
+
             // Create progress bar
             $progressBar = $this->output->createProgressBar($totalLines - $startLine);
             $progressBar->start();
@@ -126,11 +127,12 @@ class ImportUsersFromCsv extends Command
                 // Skip empty rows
                 if (empty(array_filter($row))) {
                     $currentLine++;
+
                     continue;
                 }
 
                 $userData = $this->mapCsvRowToUserData($header, $row);
-                
+
                 if ($userData) {
                     $batchData[] = $userData;
                     $batchCount++;
@@ -139,23 +141,23 @@ class ImportUsersFromCsv extends Command
                     if ($batchCount >= $batchSize) {
                         $this->processBatch($batchData);
                         $processedCount += count($batchData);
-                        
+
                         // Save progress
                         $this->saveProgress($currentLine, $processedCount);
-                        
+
                         // Reset batch
                         $batchData = [];
                         $batchCount = 0;
-                        
+
                         $progressBar->advance($batchSize);
                     }
                 }
-                
+
                 $currentLine++;
             }
 
             // Process remaining records in the last batch
-            if (!empty($batchData)) {
+            if (! empty($batchData)) {
                 $this->processBatch($batchData);
                 $processedCount += count($batchData);
                 $this->saveProgress($currentLine, $processedCount);
@@ -164,24 +166,25 @@ class ImportUsersFromCsv extends Command
 
             fclose($handle);
             $progressBar->finish();
-            
+
             $this->newLine(2);
-            $this->info("Import completed successfully!");
+            $this->info('Import completed successfully!');
             $this->info("Total records processed: {$processedCount}");
-            
+
             // Clear progress file on successful completion
             $this->clearProgress();
-            
+
             return 0;
 
         } catch (Exception $e) {
-            $this->error("Import failed: " . $e->getMessage());
-            Log::error("CSV Import Error", [
+            $this->error('Import failed: '.$e->getMessage());
+            Log::error('CSV Import Error', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
+
             return 1;
         }
     }
@@ -193,14 +196,14 @@ class ImportUsersFromCsv extends Command
     {
         $lines = 0;
         $handle = fopen($filePath, 'r');
-        
+
         if ($handle) {
             while (fgets($handle) !== false) {
                 $lines++;
             }
             fclose($handle);
         }
-        
+
         return $lines;
     }
 
@@ -210,15 +213,17 @@ class ImportUsersFromCsv extends Command
     private function validateHeader(array $header): bool
     {
         $requiredColumns = ['User ID'];
-        
+
         foreach ($requiredColumns as $column) {
-            if (!in_array($column, $header)) {
+            if (! in_array($column, $header)) {
                 $this->error("Required column '{$column}' not found in CSV header");
+
                 return false;
             }
         }
-        
-        $this->info("CSV header validation passed");
+
+        $this->info('CSV header validation passed');
+
         return true;
     }
 
@@ -229,17 +234,17 @@ class ImportUsersFromCsv extends Command
     {
         // Create associative array from header and row
         $csvData = array_combine($header, array_pad($row, count($header), null));
-        
+
         // Skip if no User ID
         if (empty($csvData['User ID'])) {
             return null;
         }
 
         $userData = [];
-        
+
         foreach ($this->columnMapping as $csvColumn => $dbColumn) {
             $value = $csvData[$csvColumn] ?? null;
-            
+
             // Handle NULL values from CSV
             if ($value === 'NULL' || $value === '' || $value === null) {
                 $userData[$dbColumn] = null;
@@ -273,6 +278,7 @@ class ImportUsersFromCsv extends Command
                 return Carbon::parse($value);
             } catch (Exception $e) {
                 Log::warning("Invalid date format for column {$column}: {$value}");
+
                 return null;
             }
         }
@@ -302,7 +308,7 @@ class ImportUsersFromCsv extends Command
             'new_password_1' => 30,
             'new_password_2' => 30,
             'unencrypted_password' => 255,
-            'remember_token' => 100
+            'remember_token' => 100,
         ];
 
         if (isset($stringLimits[$column])) {
@@ -318,7 +324,7 @@ class ImportUsersFromCsv extends Command
     private function processBatch(array $batchData): void
     {
         DB::beginTransaction();
-        
+
         try {
             // Get existing user_ids in this batch
             $userIds = array_column($batchData, 'user_id');
@@ -339,7 +345,7 @@ class ImportUsersFromCsv extends Command
             }
 
             // Bulk insert new records
-            if (!empty($toInsert)) {
+            if (! empty($toInsert)) {
                 // Split into smaller chunks to avoid parameter limit
                 $chunks = array_chunk($toInsert, 10);
                 foreach ($chunks as $chunk) {
@@ -353,12 +359,12 @@ class ImportUsersFromCsv extends Command
                     ->where('user_id', $userData['user_id'])
                     ->update(array_diff_key($userData, ['user_id' => null]));
             }
-            
+
             DB::commit();
-            
+
         } catch (Exception $e) {
             DB::rollBack();
-            throw new Exception("Batch processing failed: " . $e->getMessage());
+            throw new Exception('Batch processing failed: '.$e->getMessage());
         }
     }
 
@@ -368,12 +374,13 @@ class ImportUsersFromCsv extends Command
     private function loadProgress(): ?array
     {
         $progressPath = storage_path("app/{$this->progressFile}");
-        
+
         if (File::exists($progressPath)) {
             $content = File::get($progressPath);
+
             return json_decode($content, true);
         }
-        
+
         return null;
     }
 
@@ -386,9 +393,9 @@ class ImportUsersFromCsv extends Command
             'last_processed_line' => $lastLine,
             'total_processed' => $totalProcessed,
             'last_success_datetime' => Carbon::now()->toDateTimeString(),
-            'file_name' => $this->option('file')
+            'file_name' => $this->option('file'),
         ];
-        
+
         $progressPath = storage_path("app/{$this->progressFile}");
         File::put($progressPath, json_encode($progress, JSON_PRETTY_PRINT));
     }
@@ -399,10 +406,10 @@ class ImportUsersFromCsv extends Command
     private function clearProgress(): void
     {
         $progressPath = storage_path("app/{$this->progressFile}");
-        
+
         if (File::exists($progressPath)) {
             File::delete($progressPath);
-            $this->info("Progress tracking file cleared");
+            $this->info('Progress tracking file cleared');
         }
     }
 }

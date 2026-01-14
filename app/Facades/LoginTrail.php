@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Facade;
 
 /**
  * Login Trail Facade for easy access to LoginTrailService
- * 
+ *
  * @method static \App\Models\LoginTrail log(string $action, ?\App\Models\User $user = null, ?string $username = null, bool $success = true, ?string $reason = null, array $additionalData = [], ?\Illuminate\Http\Request $request = null)
  * @method static \App\Models\LoginTrail logLogin(\App\Models\User $user, array $additionalData = [], ?\Illuminate\Http\Request $request = null)
  * @method static \App\Models\LoginTrail logFailedLogin(string $username, string $reason = 'Invalid credentials', array $additionalData = [], ?\Illuminate\Http\Request $request = null)

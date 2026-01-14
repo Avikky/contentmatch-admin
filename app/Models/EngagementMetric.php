@@ -9,6 +9,8 @@ class EngagementMetric extends Model
 {
     use HasFactory;
 
+    protected $connection = 'appserver';
+
     protected $fillable = [
         'community_id',
         'recorded_for',

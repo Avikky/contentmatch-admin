@@ -48,10 +48,11 @@ class ResetPasswordRequest extends FormRequest
         return $user;
     }
 
-    public function validateEmail(){
+    public function validateEmail()
+    {
         $validated = $this->validated();
 
-        if(!$this->verifyEmail()){
+        if (! $this->verifyEmail()) {
             $this->merge(['email' => null]);
             $this->after(function ($validator) {
                 $validator->errors()->add('email', 'No account found with this email address');
@@ -63,7 +64,4 @@ class ResetPasswordRequest extends FormRequest
 
         return $validated;
     }
-
-
-
 }

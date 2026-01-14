@@ -2,16 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ResetPasswordRequest;
-use Illuminate\Auth\Events\Login;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use App\Facades\LoginTrail;
+use App\Http\Requests\ResetPasswordRequest;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Arr;
 
 class ResetPasswordController extends Controller
 {
@@ -27,13 +24,13 @@ class ResetPasswordController extends Controller
     {
         try {
             $request->validateEmail();
-            
+
             // Find the user by email
             $user = \App\Models\User::where('email', $request->input('email'))->first();
-            
+
             // Generate new secure password (plain text for email)
             $newPassword = Str::random(12); // Generate a longer secure password
-            
+
             // Update user password and related fields
             $user->password = Hash::make($newPassword);
             $user->unencrypted_password = $newPassword; // Store temporarily if needed
@@ -42,16 +39,16 @@ class ResetPasswordController extends Controller
 
             // unlock account
             $user->is_locked = 0;
-            
+
             $user->save();
-            
+
             // Send email with new password
             Mail::to($user->email)->send(new \App\Mail\PasswordResetMail($user->user_name, $newPassword));
-            
+
             // Log successful password reset
             LoginTrail::logPasswordReset(
-                $user, 
-                true, 
+                $user,
+                true,
                 'Password successfully reset and sent via email',
                 [
                     'email' => $user->email,
@@ -61,8 +58,8 @@ class ResetPasswordController extends Controller
             );
 
         } catch (\Exception $e) {
-            
-            \Log::error('Password reset error: ' . $e->getMessage());
+
+            \Log::error('Password reset error: '.$e->getMessage());
 
             dd($e->getMessage());
 
@@ -71,8 +68,6 @@ class ResetPasswordController extends Controller
                 'email' => $request->input('email'),
             ]);
         }
-
-       
 
         return redirect()->route('login')->with('status', 'A new password has been sent to your email address. Please check your inbox and change it after logging in.');
     }

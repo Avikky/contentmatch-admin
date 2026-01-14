@@ -2,16 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Facades\LoginTrail;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
-use App\Models\Loggin;
-use App\Facades\LoginTrail;
 
 class LoginController extends Controller
 {
@@ -26,7 +24,7 @@ class LoginController extends Controller
     {
         try {
             $request->authenticate();
-            
+
             // Log successful login
             LoginTrail::logLogin(Auth::user(), [
                 'login_method' => 'web',
@@ -36,14 +34,14 @@ class LoginController extends Controller
             $request->session()->regenerate();
 
             return redirect()->intended(RouteServiceProvider::HOME);
-            
+
         } catch (\Exception $e) {
             // Log failed login attempt
             LoginTrail::logFailedLogin(
                 $request->input('username', $request->input('email', 'unknown')),
-                'Authentication failed: ' . $e->getMessage()
+                'Authentication failed: '.$e->getMessage()
             );
-            
+
             throw $e;
         }
     }
@@ -51,7 +49,7 @@ class LoginController extends Controller
     public function logout(Request $request): RedirectResponse
     {
         $user = Auth::user();
-        
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
