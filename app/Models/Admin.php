@@ -15,6 +15,8 @@ class Admin extends Authenticatable
      *
      * @var array<int, string>
      */
+
+    protected $connection = 'mysql';
     protected $fillable = [
         'full_name',
         'email',

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Community;
+use App\Models\CommunityMember;
 use App\Models\Report;
 use App\Models\User;
 use App\Models\UserModerationLog;
@@ -64,6 +65,7 @@ class UserManagementService
      */
     public function getUserDetails(int $userId): array
     {
+
         $user = User::withTrashed()
             ->with([
                 'communities' => fn ($q) => $q->withPivot('role', 'status', 'notification_enabled', 'last_activity_at'),
@@ -86,6 +88,8 @@ class UserManagementService
                 'following',
             ])
             ->findOrFail($userId);
+
+
 
         // Get user activities (already loaded via relationship)
         $activities = $user->recentActivities;
@@ -210,6 +214,10 @@ class UserManagementService
         DB::transaction(function () use ($userId, $communityId, $adminId, $reason) {
             $user = User::findOrFail($userId);
             $community = Community::findOrFail($communityId);
+
+            // CommunityMember::where('user_id', $userId)
+            //     ->where('community_id', $communityId)
+            //     ->delete();
 
             $user->communities()->detach($communityId);
 

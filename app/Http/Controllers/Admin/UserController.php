@@ -116,7 +116,7 @@ class UserController extends Controller
 
             return Redirect::route('admin.users.index')->with('success', 'User removed successfully.');
         } catch (\Exception $e) {
-            return Redirect::back()->withErrors(['error' => $e->getMessage()]);
+            return Redirect::back()->with('error', $e->getMessage());
         }
     }
 
@@ -132,7 +132,7 @@ class UserController extends Controller
 
             return Redirect::back()->with('success', 'User banned successfully.');
         } catch (\Exception $e) {
-            return Redirect::back()->withErrors(['error' => $e->getMessage()]);
+            return Redirect::back()->with('error', $e->getMessage());
         }
     }
 
@@ -148,7 +148,7 @@ class UserController extends Controller
 
             return Redirect::back()->with('success', 'User suspended successfully.');
         } catch (\Exception $e) {
-            return Redirect::back()->withErrors(['error' => $e->getMessage()]);
+            return Redirect::back()->with('error', $e->getMessage());
         }
     }
 
@@ -164,14 +164,14 @@ class UserController extends Controller
 
             return Redirect::back()->with('success', 'User reactivated successfully.');
         } catch (\Exception $e) {
-            return Redirect::back()->withErrors(['error' => $e->getMessage()]);
+            return Redirect::back()->with('error', $e->getMessage());
         }
     }
 
     public function removeFromCommunity(User $user, Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'community_id' => ['required', 'exists:communities,id'],
+            'community_id' => ['required'],
             'reason' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -186,7 +186,7 @@ class UserController extends Controller
 
             return Redirect::back()->with('success', 'User removed from community successfully.');
         } catch (\Exception $e) {
-            return Redirect::back()->withErrors(['error' => $e->getMessage()]);
+            return Redirect::back()->with('error', $e->getMessage());
         }
     }
 

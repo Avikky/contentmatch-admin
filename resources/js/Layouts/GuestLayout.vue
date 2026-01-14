@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import ToastContainer from '@/Components/ToastContainer.vue';
 
 const year = computed(() => new Date().getFullYear());
 </script>
@@ -18,6 +19,9 @@ const year = computed(() => new Date().getFullYear());
 
       <p class="mt-10 text-center text-xs text-white/60">© {{ year }} ContentMatch. All rights reserved.</p>
     </div>
+
+    <!-- Global Toast Notifications -->
+    <ToastContainer />
   </div>
 </template>
 

@@ -213,7 +213,7 @@ class ContentController extends Controller
         // Trending hashtags
         $trendingHashtags = Hashtag::query()
             ->withCount(['contents as recent_usage' => function ($q) use ($dateFrom) {
-                $q->where('created_at', '>=', $dateFrom);
+                $q->where('contents.created_at', '>=', $dateFrom);
             }])
             ->having('recent_usage', '>', 0)
             ->orderByDesc('recent_usage')
@@ -222,8 +222,8 @@ class ContentController extends Controller
 
         // Top categories
         $topCategories = Category::query()
-            ->withCount(['contents as recent_contents' => function ($q) use ($dateFrom) {
-                $q->where('created_at', '>=', $dateFrom);
+            ->withCount(['content as recent_contents' => function ($q) use ($dateFrom) {
+                $q->where('contents.created_at', '>=', $dateFrom);
             }])
             ->having('recent_contents', '>', 0)
             ->orderByDesc('recent_contents')
@@ -242,7 +242,7 @@ class ContentController extends Controller
         // Most active users (content creators)
         $mostActiveCreators = User::query()
             ->withCount(['contents as recent_contents' => function ($q) use ($dateFrom) {
-                $q->where('created_at', '>=', $dateFrom);
+                $q->where('contents.created_at', '>=', $dateFrom);
             }])
             ->having('recent_contents', '>', 0)
             ->orderByDesc('recent_contents')
@@ -252,7 +252,7 @@ class ContentController extends Controller
         // Most active engagers
         $mostActiveEngagers = User::query()
             ->withCount(['engagements as recent_engagements' => function ($q) use ($dateFrom) {
-                $q->where('created_at', '>=', $dateFrom);
+                $q->where('engagements.created_at', '>=', $dateFrom);
             }])
             ->having('recent_engagements', '>', 0)
             ->orderByDesc('recent_engagements')
@@ -297,9 +297,8 @@ class ContentController extends Controller
         ];
 
         // Transform platform distribution for frontend
-        $platformStats = $platformDistribution->map(function ($item) {
-            $total = $platformDistribution->sum('count');
-
+        $total = $platformDistribution->sum('count');
+        $platformStats = $platformDistribution->map(function ($item) use ($total) {
             return [
                 'name' => $item->platform->name ?? 'Unknown',
                 'count' => $item->count,

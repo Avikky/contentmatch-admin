@@ -15,6 +15,8 @@ class AdminOtp extends Model
      *
      * @var array<int, string>
      */
+
+     protected $connection = 'mysql';
     protected $fillable = [
         'admin_id',
         'otp_hash',

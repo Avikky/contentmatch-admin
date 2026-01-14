@@ -2,39 +2,58 @@
 import { computed, ref, watch } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import ToastContainer from '@/Components/ToastContainer.vue';
 
 const page = usePage();
 const showMobile = ref(false);
 
 const admin = computed(() => page.props.auth?.user ?? null);
 
-const navigation = [
-  {
-    label: 'Dashboard',
-    name: 'admin.dashboard',
-    icon: 'M4 6h16M4 12h16M4 18h16',
-  },
-  {
-    label: 'Users',
-    name: 'admin.users.index',
-    icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-  },
-  {
-    label: 'Communities',
-    name: 'admin.communities.index',
-    icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z',
-  },
-  {
-    label: 'Content',
-    name: 'admin.content.index',
-    icon: 'M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z',
-  },
-  {
+const isSuperAdmin = computed(() => {
+  return admin.value?.role === 'superadmin';
+});
+
+const navigation = computed(() => {
+  const baseNavigation = [
+    {
+      label: 'Dashboard',
+      name: 'admin.dashboard',
+      icon: 'M4 6h16M4 12h16M4 18h16',
+    },
+    {
+      label: 'Users',
+      name: 'admin.users.index',
+      icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
+    },
+    {
+      label: 'Communities',
+      name: 'admin.communities.index',
+      icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z',
+    },
+    {
+      label: 'Content',
+      name: 'admin.content.index',
+      icon: 'M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z',
+    },
+  ];
+
+  // Add Admins menu item for superadmin only
+  if (isSuperAdmin.value) {
+    baseNavigation.push({
+      label: 'Admins',
+      name: 'admin.admins.index',
+      icon: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z',
+    });
+  }
+
+  baseNavigation.push({
     label: 'Profile',
     name: 'admin.profile',
     icon: 'M12 12a5 5 0 100-10 5 5 0 000 10zm-7 9a7 7 0 0114 0H5z',
-  },
-];
+  });
+
+  return baseNavigation;
+});
 
 const isActive = (name) => route().current(name);
 
@@ -66,6 +85,9 @@ watch(
     showMobile.value = false;
   }
 );
+
+// Note: Flash messages are now handled globally in app.js
+// No need to watch for them here anymore
 </script>
 
 <template>
@@ -180,8 +202,7 @@ watch(
                 :href="route('admin.logout')"
                 method="post"
                 as="button"
-                class="sm:hidden inline-flex items-center justify-center rounded-full border border-slate-200 bg-white p-2 text-slate-700 hover:bg-slate-100"
-              >
+                class="sm:hidden inline-flex items-center justify-center rounded-full border border-slate-200 bg-white p-2 text-slate-700 hover:bg-slate-100">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
@@ -195,6 +216,9 @@ watch(
         <slot />
       </main>
     </div>
+
+    <!-- Global Toast Notifications -->
+    <ToastContainer />
   </div>
 </template>
 

@@ -122,7 +122,7 @@ class Content extends Model
 
     public function embedUrl()
     {
-        switch ($this->platform->name) {
+        switch ($this->platform?->name ?? '') {
             case 'youtube':
                 $embedUrl = 'https://www.youtube.com/embed/'.$this->video_id.'?autoplay=0&controls=0&modestbranding=0&showinfo=0&rel=0&fs=0&iv_load_policy=3&disablekb=1&enablejsapi=1';
                 break;

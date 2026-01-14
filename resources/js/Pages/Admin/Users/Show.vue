@@ -351,6 +351,7 @@
 import { ref } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Toast  from '@/Components/Toast.vue';
 
 const props = defineProps({
   user: Object,
