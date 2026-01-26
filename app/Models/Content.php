@@ -48,6 +48,15 @@ class Content extends Model
 
     protected $with = ['user', 'metrics'];
 
+    /**
+     * Retrieve the model for a bound value.
+     * Ensures route model binding uses the correct database connection.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        return $this->on($this->connection)->where($field ?? $this->getRouteKeyName(), $value)->first();
+    }
+
     // Relationships
     public function user()
     {
