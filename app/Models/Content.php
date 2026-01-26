@@ -13,8 +13,6 @@ class Content extends Model
     use HasFactory, SoftDeletes; // Removed Reportable trait
 
     protected $connection = 'appserver';
-    
-    protected $table = 'content';
 
     protected $fillable = [
         'user_id',
