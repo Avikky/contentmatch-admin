@@ -101,8 +101,8 @@
               <div>
                 <p class="text-sm text-slate-500">Content URL</p>
                 <a
-                  v-if="content.url"
-                  :href="content.url"
+                  v-if="content.platform_content_url"
+                  :href="content.platform_content_url"
                   target="_blank"
                   class="text-sm text-blue-600 hover:text-blue-800 truncate block"
                 >
