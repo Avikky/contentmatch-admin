@@ -106,7 +106,7 @@
                   target="_blank"
                   class="text-sm text-blue-600 hover:text-blue-800 truncate block"
                 >
-                  {{ content.url }}
+                  {{ content.title || 'View Content' }}
                 </a>
                 <p v-else class="text-sm text-slate-400">Not available</p>
               </div>
