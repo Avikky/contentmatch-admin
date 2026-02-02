@@ -73,7 +73,7 @@
               </div>
             </div>
 
-            <h2 class="text-2xl font-bold text-slate-900 mb-2">{{ content.title || 'Untitled' }}</h2>
+            <h2 class="text-2xl font-bold text-slate-900 mb-2"><a :href="content.url"> {{ content.title || 'Untitled' }} </a></h2>
             <p class="text-slate-600 mb-4">{{ content.description || 'No description provided' }}</p>
 
             <div class="flex flex-wrap gap-2 mb-4">
