@@ -116,7 +116,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::put('/{content}/update-status', [\App\Http\Controllers\Admin\ContentController::class, 'updateStatus'])->name('update-status');
             Route::post('/{content}/ban', [\App\Http\Controllers\Admin\ContentController::class, 'ban'])->name('ban');
             Route::delete('/{content}', [\App\Http\Controllers\Admin\ContentController::class, 'destroy'])->name('destroy');
-
+            // Test route for content status update
             // Bulk Actions
             Route::post('/bulk-update-status', [\App\Http\Controllers\Admin\ContentController::class, 'bulkUpdateStatus'])->name('bulk-update-status');
         });

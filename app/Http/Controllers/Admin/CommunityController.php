@@ -207,12 +207,53 @@ class CommunityController extends Controller
 
     public function destroy(Community $community): RedirectResponse
     {
+        // Log the deletion for audit trail
+        activity()
+            ->performedOn($community)
+            ->withProperties([
+                'community_id' => $community->id,
+                'name' => $community->name,
+                'members_count' => $community->members()->count(),
+                'content_count' => $community->content()->count(),
+            ])
+            ->log('community_deleted');
+
+        // Detach all members from the community
         $community->members()->detach();
-        $community->hashtags()->detach();
+
+        // Soft delete all content posted in this community
+        $community->content()->delete();
+
+        // Delete community messages if they exist
+        if (method_exists($community, 'messages')) {
+            $community->messages()->delete();
+        }
+
+        // Delete engagement scores
         $community->engagementScores()->delete();
+
+        // Delete community rules
+        $community->rules()->delete();
+
+        // Delete community settings
+        if ($community->settings) {
+            $community->settings()->delete();
+        }
+
+        // Delete Discord integration
+        if ($community->communityDiscord) {
+            $community->communityDiscord()->delete();
+        }
+
+        // Detach all morph relationships
+        $community->hashtags()->detach();
+        $community->purposes()->detach();
+        $community->platforms()->detach();
+
+        // Finally, soft delete the community itself
         $community->delete();
 
-        return Redirect::back()->with('success', 'Community removed successfully.');
+        return Redirect::route('admin.communities.index')->with('success', 'Community and all related data have been removed successfully.');
     }
 
     public function banMember(Community $community, User $user): RedirectResponse

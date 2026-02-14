@@ -592,6 +592,7 @@
 </template>
 
 <script setup>
+// Admin Content Detail Page - Provides an in-depth view of a specific content item, including all associated data and actions for moderation.
 import { ref } from 'vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';

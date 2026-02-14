@@ -105,6 +105,11 @@ class Community extends Model
         return $this->hasMany(Content::class);
     }
 
+    public function messages()
+    {
+        return $this->hasMany(CommunityMessage::class);
+    }
+
     public function purposes()
     {
         return $this->belongsToMany(Purpose::class, 'community_purposes');
