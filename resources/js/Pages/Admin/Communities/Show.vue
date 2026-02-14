@@ -719,7 +719,11 @@ const suspendCommunity = () => {
   processing.value = true;
   router.post(
     route('admin.communities.update', props.community.id),
-    { status: 'suspended' },
+    { 
+      name: props.community.name,
+      type: props.community.type,
+      status: 'suspended' 
+    },
     {
       onSuccess: () => {
         showSuspendModal.value = false;
@@ -735,7 +739,11 @@ const archiveCommunity = () => {
   processing.value = true;
   router.post(
     route('admin.communities.update', props.community.id),
-    { status: 'archived' },
+    { 
+      name: props.community.name,
+      type: props.community.type,
+      status: 'archived' 
+    },
     {
       onSuccess: () => {
         showArchiveModal.value = false;
