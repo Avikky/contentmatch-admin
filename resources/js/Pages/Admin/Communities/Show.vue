@@ -15,6 +15,30 @@
             <p class="mt-1 text-sm text-slate-600">View and manage community information</p>
           </div>
         </div>
+        
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-3">
+          <button
+            v-if="community.status === 'active'"
+            @click="showSuspendModal = true"
+            class="rounded-lg border border-yellow-600 bg-white px-4 py-2 text-sm font-semibold text-yellow-600 hover:bg-yellow-50"
+          >
+            Suspend
+          </button>
+          <button
+            v-if="community.status === 'active'"
+            @click="showArchiveModal = true"
+            class="rounded-lg border border-gray-600 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+          >
+            Archive
+          </button>
+          <button
+            @click="showDeleteModal = true"
+            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+          >
+            Delete Community
+          </button>
+        </div>
       </div>
 
       <!-- Community Profile Card -->
@@ -490,6 +514,104 @@
         </div>
       </div>
     </Modal>
+
+    <!-- Suspend Community Modal -->
+    <Modal :show="showSuspendModal" @close="showSuspendModal = false">
+      <div class="p-6">
+        <h2 class="text-xl font-semibold text-slate-900">Suspend Community</h2>
+        <p class="mt-2 text-sm text-slate-600">
+          Are you sure you want to suspend <strong>{{ community.name }}</strong>? This will prevent new posts and limit community activities.
+        </p>
+        <div class="mt-6 flex justify-end gap-3">
+          <button
+            @click="showSuspendModal = false"
+            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            @click="suspendCommunity"
+            :disabled="processing"
+            class="rounded-lg bg-yellow-600 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <svg v-if="processing" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>{{ processing ? 'Suspending...' : 'Suspend Community' }}</span>
+          </button>
+        </div>
+      </div>
+    </Modal>
+
+    <!-- Archive Community Modal -->
+    <Modal :show="showArchiveModal" @close="showArchiveModal = false">
+      <div class="p-6">
+        <h2 class="text-xl font-semibold text-slate-900">Archive Community</h2>
+        <p class="mt-2 text-sm text-slate-600">
+          Are you sure you want to archive <strong>{{ community.name }}</strong>? This will make the community read-only.
+        </p>
+        <div class="mt-6 flex justify-end gap-3">
+          <button
+            @click="showArchiveModal = false"
+            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            @click="archiveCommunity"
+            :disabled="processing"
+            class="rounded-lg bg-gray-600 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <svg v-if="processing" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>{{ processing ? 'Archiving...' : 'Archive Community' }}</span>
+          </button>
+        </div>
+      </div>
+    </Modal>
+
+    <!-- Delete Community Modal -->
+    <Modal :show="showDeleteModal" @close="showDeleteModal = false">
+      <div class="p-6">
+        <h2 class="text-xl font-semibold text-red-600">Delete Community</h2>
+        <p class="mt-2 text-sm text-slate-600">
+          Are you sure you want to permanently delete <strong>{{ community.name }}</strong>?
+        </p>
+        <div class="mt-4 rounded-lg bg-red-50 border border-red-200 p-4">
+          <p class="text-sm text-red-800 font-medium">⚠️ This action will:</p>
+          <ul class="mt-2 text-sm text-red-700 list-disc list-inside space-y-1">
+            <li>Remove all members from the community</li>
+            <li>Soft delete all community content</li>
+            <li>Delete all community messages</li>
+            <li>Remove engagement scores and analytics</li>
+            <li>Delete Discord integration if linked</li>
+          </ul>
+          <p class="mt-3 text-sm text-red-800 font-semibold">This cannot be undone!</p>
+        </div>
+        <div class="mt-6 flex justify-end gap-3">
+          <button
+            @click="showDeleteModal = false"
+            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            @click="deleteCommunity"
+            :disabled="processing"
+            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <svg v-if="processing" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>{{ processing ? 'Deleting...' : 'Yes, Delete Community' }}</span>
+          </button>
+        </div>
+      </div>
+    </Modal>
   </AuthenticatedLayout>
 </template>
 
@@ -508,6 +630,9 @@ const banModalShow = ref(false);
 const removeModalShow = ref(false);
 const selectedMember = ref(null);
 const processing = ref(false);
+const showSuspendModal = ref(false);
+const showArchiveModal = ref(false);
+const showDeleteModal = ref(false);
 
 const getUserInitials = (name) => {
   if (!name) return '?';
@@ -582,6 +707,53 @@ const removeMember = () => {
       onSuccess: () => {
         removeModalShow.value = false;
         selectedMember.value = null;
+      },
+      onFinish: () => {
+        processing.value = false;
+      },
+    }
+  );
+};
+
+const suspendCommunity = () => {
+  processing.value = true;
+  router.post(
+    route('admin.communities.update', props.community.id),
+    { status: 'suspended' },
+    {
+      onSuccess: () => {
+        showSuspendModal.value = false;
+      },
+      onFinish: () => {
+        processing.value = false;
+      },
+    }
+  );
+};
+
+const archiveCommunity = () => {
+  processing.value = true;
+  router.post(
+    route('admin.communities.update', props.community.id),
+    { status: 'archived' },
+    {
+      onSuccess: () => {
+        showArchiveModal.value = false;
+      },
+      onFinish: () => {
+        processing.value = false;
+      },
+    }
+  );
+};
+
+const deleteCommunity = () => {
+  processing.value = true;
+  router.delete(
+    route('admin.communities.destroy', props.community.id),
+    {
+      onSuccess: () => {
+        router.visit(route('admin.communities.index'));
       },
       onFinish: () => {
         processing.value = false;
