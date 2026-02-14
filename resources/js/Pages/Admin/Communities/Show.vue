@@ -721,8 +721,11 @@ const suspendCommunity = () => {
     route('admin.communities.update', props.community.id),
     { 
       name: props.community.name,
+      description: props.community.description || '',
       type: props.community.type,
-      status: 'suspended' 
+      status: 'suspended',
+      owner_id: props.community.owner?.id,
+      category_id: props.community.category?.id
     },
     {
       onSuccess: () => {
@@ -741,8 +744,11 @@ const archiveCommunity = () => {
     route('admin.communities.update', props.community.id),
     { 
       name: props.community.name,
+      description: props.community.description || '',
       type: props.community.type,
-      status: 'archived' 
+      status: 'archived',
+      owner_id: props.community.owner?.id,
+      category_id: props.community.category?.id
     },
     {
       onSuccess: () => {
