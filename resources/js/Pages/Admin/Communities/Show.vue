@@ -718,14 +718,9 @@ const removeMember = () => {
 const suspendCommunity = () => {
   processing.value = true;
   router.post(
-    route('admin.communities.update', props.community.id),
+    route('admin.communities.update-status', props.community.id),
     { 
-      name: props.community.name,
-      description: props.community.description || '',
-      type: props.community.type,
-      status: 'suspended',
-      owner_id: props.community.owner?.id,
-      category_id: props.community.category?.id
+      status: 'suspended'
     },
     {
       onSuccess: () => {
@@ -741,14 +736,9 @@ const suspendCommunity = () => {
 const archiveCommunity = () => {
   processing.value = true;
   router.post(
-    route('admin.communities.update', props.community.id),
+    route('admin.communities.update-status', props.community.id),
     { 
-      name: props.community.name,
-      description: props.community.description || '',
-      type: props.community.type,
-      status: 'archived',
-      owner_id: props.community.owner?.id,
-      category_id: props.community.category?.id
+      status: 'archived'
     },
     {
       onSuccess: () => {

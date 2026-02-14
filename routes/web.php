@@ -94,6 +94,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/{community}', [\App\Http\Controllers\Admin\CommunityController::class, 'show'])->name('show');
             Route::post('/', [\App\Http\Controllers\Admin\CommunityController::class, 'store'])->name('store');
             Route::post('/{community}', [\App\Http\Controllers\Admin\CommunityController::class, 'update'])->name('update');
+            Route::post('/{community}/update-status', [\App\Http\Controllers\Admin\CommunityController::class, 'updateStatus'])->name('update-status');
             Route::delete('/{community}', [\App\Http\Controllers\Admin\CommunityController::class, 'destroy'])->name('destroy');
 
             // Member Management

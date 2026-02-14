@@ -124,6 +124,28 @@ class CommunityController extends Controller
         return Redirect::back()->with('success', 'Community updated successfully.');
     }
 
+    public function updateStatus(Request $request, Community $community): RedirectResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'in:active,archived,suspended'],
+        ]);
+
+        $community->status = $validated['status'];
+        $community->save();
+
+        activity()
+            ->performedOn($community)
+            ->withProperties([
+                'community_id' => $community->id,
+                'old_status' => $community->getOriginal('status'),
+                'new_status' => $validated['status'],
+            ])
+            ->log('community_status_updated');
+
+        $statusText = ucfirst($validated['status']);
+        return Redirect::back()->with('success', "Community status updated to {$statusText}.");
+    }
+
     public function show(Community $community): Response
     {
         $community->load([
